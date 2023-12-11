@@ -1,0 +1,173 @@
+---
+title: "India Religion Pew Survey data analysis"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+library(tidyverse)
+library(rstatix)
+library(ggthemes)
+library(ggdoctheme)
+library(ggpubr)
+library(ggrepel)
+library(ggridges)
+library(glue)
+data = read_csv("../PewData.csv")
+```
+
+This notebook is my continuing effort on analyzing the Pew Survey Data conducted through November 2019 to March 2020. The main theme of the survey was Religion in India: Tolerance and Segregation. I would be working on this data as an when I come up with some hypothesis, and try to test it with this data. The data is publicly avaiable from the [Pew Research website](https://www.pewresearch.org/religion/dataset/india-survey-dataset/). I would not be hosting the raw data in this repository, and would only be presenting the analyzed result, since I am not sure about the data sharing policy of Pew Research.
+
+The data contains a Region variable, denoting the five regions of India defined by the Indian zonal council. The codes with their respective states and UT are as follows:
+
+ 1. Northeast: Arunachal Pradesh, Sikkim, Nagaland, Manipur, Mizoram, Tripura, Assam, and Meghalaya
+ 2. North: Chandigarh, Delhi, Haryana, Himachal Pradesh, Jammu and Kashmir, Ladakh, Punjab, and Rajasthan
+ 3. Central: Chhattisgarh, Madhya Pradesh, Uttar Pradesh, and Uttarakhand
+ 4. East: Bihar, Jharkhand, Odisha, and West Bengal
+ 5. West: Dadra and Nagar Haveli, Daman and Diu, Goa, Gujarat, and Maharashtra
+ 6. South: Andaman and Nicobar Islands, Andhra Pradesh, Karnataka, Kerala, Puducherry, Tamil Nadu, Telangana, Lakshadweep
+
+I would mostly be going through the data, and trying to visualize the data, look at patterns, and attempt to answer interesting questions.
+
+## Women safety and issues
+
+There are a bunch of questions regarding the safety of women and various other issues related to women. Let's look at them one by one.
+
+### Violence against women
+
+Let's look at what is the perception of India on violence against women. First let's look at the national average:
+
+```{r, women_violence, echo=FALSE}
+data %>% select(QRID, Q6e) %>% count(Q6e) %>% 
+mutate(category = case_when(
+    Q6e == 1 ~ "Very big problem",
+    Q6e == 2 ~ "Moderately big problem",
+    Q6e == 3 ~ "Small problem",
+    Q6e == 4 ~ "No problem",
+    Q6e == 98 ~ "Don't Know",
+    Q6e == 99 ~ "Refuse to answer"
+), percentage = n/sum(n)*100) %>% 
+arrange(percentage) %>%
+mutate(category = fct_relevel(category, unique(category))) %>%
+ggplot(aes(x = category, y = percentage))+
+geom_col(fill = "#ff9a00")+
+#scale_y_continuous(labels = scales::percent_format(scale = 1))+
+scale_y_continuous(expand = expansion(mult = c(0, 0.15)))+
+geom_text(mapping = aes(x = category, y = percentage, label = scales::percent_format(scale = 1)(percentage)),
+    hjust = -0.1,
+    color = 'black') +
+coord_cartesian(clip = 'off') +
+coord_flip()+
+theme_doc()+
+labs(x = element_blank(), y = element_blank())+
+theme(axis.text.x = element_blank(), axis.line.x=element_blank(), axis.text.y=element_text(size=11))
+```
+
+It seems like majority of the people do take violence against women as a very big problem. Let's look at region wise distribution of the response.
+
+```{r, women_violence_region, fig.height = 10, fig.width = 8, echo=FALSE}
+data %>% select(QRID, REGION, Q6e) %>% group_by(REGION) %>% count(Q6e) %>% 
+mutate(category = case_when(
+    Q6e == 1 ~ "Very big problem",
+    Q6e == 2 ~ "Moderately big problem",
+    Q6e == 3 ~ "Small problem",
+    Q6e == 4 ~ "No problem",
+    Q6e == 98 ~ "Don't Know",
+    Q6e == 99 ~ "Refuse to answer"
+), 
+region = case_when(
+    REGION == 1 ~ "Northeast",
+    REGION == 2 ~ "North",
+    REGION == 3 ~ "Central",
+    REGION == 4 ~ "East",
+    REGION == 5 ~ "West",
+    REGION == 6 ~ "South"),
+percentage = n/sum(n)*100, text = glue("{region}: {round(percentage,1)}%")) %>%
+arrange(percentage) %>%
+mutate(category = fct_relevel(category, unique(category))) %>%
+ggplot(aes(x = percentage, y = category, fill = region))+
+geom_col(position = position_dodge(0.9))+
+scale_x_continuous(expand = expansion(mult = c(0, 0.2)))+
+geom_text(aes(label = text),
+    hjust = -0.1,
+    color = 'black',
+    position = position_dodge(0.9)) +
+coord_cartesian(clip = 'off') +
+scale_fill_tableau("Classic 10", guide = FALSE)+
+theme_doc()+
+labs(x = element_blank(), y = element_blank())+
+theme(axis.text.x = element_blank(), axis.line.x=element_blank(), axis.text.y=element_text(size=11))
+```
+
+There seems to be some variation region wise in their perception of violence against women in India to be a very big problem. More people from South presumably consider this a big problem than rest of India.
+
+Now let's see what the population thinks could be a mitigating factor to improve the safety of women in India. First lets look at the national average.
+
+```{r, women_factor, echo=FALSE}
+data %>% select(QRID, Q7) %>% count(Q7) %>% 
+mutate(category = case_when(
+    Q7 == 1 ~ "Teaching boys to respect all women",
+    Q7 == 2 ~ "Teaching girls to behave appropriately",
+    Q7 == 3 ~ "Women are already safe",
+    Q7 == 4 ~ "Improve law and order",
+    Q7 == 5 ~ "Teaching both boys and girls/ Depends/ Other",
+    Q7 == 98 ~ "Don't Know",
+    Q7 == 99 ~ "Refuse to answer"
+), percentage = n/sum(n)*100,
+text = glue("{round(percentage,1)}%")) %>% 
+arrange(percentage) %>%
+mutate(category = fct_relevel(category, unique(category))) %>%
+ggplot(aes(x = percentage, y = category))+
+geom_col(fill = "#ff9a00")+
+scale_x_continuous(expand = expansion(mult = c(0, 0.2)))+
+scale_y_discrete(labels = function(category) str_wrap(category, width = 25))+
+geom_text(aes(label = text),
+    hjust = -0.1,
+    color = 'black') +
+coord_cartesian(clip = 'off') +
+theme_doc()+
+labs(x = element_blank(), y = element_blank())+
+theme(axis.text.x = element_blank(), axis.line.x=element_blank(), axis.text.y=element_text(size=11))
+```
+
+It seems like the half of India believes that the responsibility of women safety is on educating the boys. Interestingly, the response almost exactly halves at each stage, at least in the top 4 cases. Now let's look at the data when groupped by region.
+
+```{r, women_factor_region, fig.height = 10, fig.width = 8, echo=FALSE}
+data %>% select(QRID, REGION, Q7) %>% group_by(REGION) %>% count(Q7) %>% 
+mutate(category = case_when(
+    Q7 == 1 ~ "Teaching boys to respect all women",
+    Q7 == 2 ~ "Teaching girls to behave appropriately",
+    Q7 == 3 ~ "Women are already safe",
+    Q7 == 4 ~ "Improve law and order",
+    Q7 == 5 ~ "Teaching both boys and girls/ Depends/ Other",
+    Q7 == 98 ~ "Don't Know",
+    Q7 == 99 ~ "Refuse to answer"
+), 
+region = case_when(
+    REGION == 1 ~ "Northeast",
+    REGION == 2 ~ "North",
+    REGION == 3 ~ "Central",
+    REGION == 4 ~ "East",
+    REGION == 5 ~ "West",
+    REGION == 6 ~ "South"),
+percentage = n/sum(n)*100, text = glue("{region}: {round(percentage,1)}%")) %>%
+arrange(percentage) %>%
+mutate(category = fct_relevel(category, unique(category))) %>%
+ggplot(aes(x = percentage, y = category, fill = region))+
+geom_col(position = position_dodge(0.9))+
+scale_x_continuous(expand = expansion(mult = c(0, 0.2)))+
+scale_y_discrete(labels = function(category) str_wrap(category, width = 25))+
+geom_text(aes(label = text),
+    hjust = -0.1,
+    color = 'black',
+    position = position_dodge(0.9)) +
+coord_cartesian(clip = 'off') +
+scale_fill_tableau("Classic 10", guide = FALSE)+
+theme_doc()+
+labs(x = element_blank(), y = element_blank())+
+theme(axis.text.x = element_blank(), axis.line.x=element_blank(),
+ axis.text.y=element_text(size=11))
+```
+
+Very interestingly, about 33% people from the Eastern region thinks that teaching girls to behave appropriately would be a mitigating factor to improve women safety. This is more than the national average of 26.4%. The other regions hover around that data, and interestingly the Central region is low on focusing on girls specifically, but teaching both boys and girls, or perhaps it is situation dependent on their case.
+
