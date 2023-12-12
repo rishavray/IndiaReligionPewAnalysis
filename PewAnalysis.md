@@ -72,3 +72,11 @@ improve women safety. This is more than the national average of 26.4%.
 The other regions hover around that data, and interestingly the Central
 region is low on focusing on girls specifically, but teaching both boys
 and girls, or perhaps it is situation dependent on their case.
+
+## Health care
+
+Next let’s see what do people say about health care. A lot of debate
+nowadays is on whether Ayurveda is a legitimate alternative to mordern
+medicine. What do the people of India think about it.
+
+![](PewAnalysis_files/figure-gfm/health_care-1.png)<!-- -->

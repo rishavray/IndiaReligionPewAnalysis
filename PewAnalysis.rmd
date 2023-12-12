@@ -83,17 +83,19 @@ region = case_when(
     REGION == 5 ~ "West",
     REGION == 6 ~ "South"),
 percentage = n/sum(n)*100, text = glue("{region}: {round(percentage,1)}%")) %>%
-arrange(percentage) %>%
-mutate(category = fct_relevel(category, unique(category))) %>%
+arrange(percentage, .by_group = TRUE) %>%
+mutate(category = fct_relevel(category, unique(category)),
+groupID = 1:n()) %>%
 ggplot(aes(x = percentage, y = category, fill = region))+
 geom_col(position = position_dodge(0.9))+
+scale_fill_tableau("Classic 10", guide = FALSE)+
 scale_x_continuous(expand = expansion(mult = c(0, 0.2)))+
+scale_y_discrete(labels = function(category) str_wrap(category, width = 25))+
 geom_text(aes(label = text),
     hjust = -0.1,
     color = 'black',
     position = position_dodge(0.9)) +
 coord_cartesian(clip = 'off') +
-scale_fill_tableau("Classic 10", guide = FALSE)+
 theme_doc()+
 labs(x = element_blank(), y = element_blank())+
 theme(axis.text.x = element_blank(), axis.line.x=element_blank(), axis.text.y=element_text(size=11))
@@ -171,3 +173,41 @@ theme(axis.text.x = element_blank(), axis.line.x=element_blank(),
 
 Very interestingly, about 33% people from the Eastern region thinks that teaching girls to behave appropriately would be a mitigating factor to improve women safety. This is more than the national average of 26.4%. The other regions hover around that data, and interestingly the Central region is low on focusing on girls specifically, but teaching both boys and girls, or perhaps it is situation dependent on their case.
 
+## Health care
+
+Next let's see what do people say about health care. A lot of debate nowadays is on whether Ayurveda is a legitimate alternative to mordern medicine. What do the people of India think about it.
+
+```{r, health_care, fig.height = 10, fig.width = 8, echo=FALSE}
+data %>% select(QRID, Q14a, Q14b, Q14c, Q14d) %>% gather("Q", "A", -QRID) %>% 
+count(Q, A) %>% group_by(Q) %>% 
+mutate(Qcategory = case_when(
+    Q == "Q14a" ~ "Ayurveda or home remedies",
+    Q == "Q14b" ~ "Religious ritual",
+    Q == "Q14c" ~ "Homeopathy",
+    Q == "Q14d" ~ "Medical science"),
+    Acategory = case_when(
+    A == 1 ~ "A lot",
+    A == 2 ~ "Some",
+    A == 3 ~ "Not too much",
+    A == 4 ~ "Not at all",
+    A == 5 ~ "Depends on the situation",
+    A == 98 ~ "Don't Know",
+    A == 99 ~ "Refuse to answer"
+), percentage = n/sum(n)*100,
+text = glue("{Acategory}: {round(percentage,1)}%")) %>% 
+arrange(percentage, .by_group = TRUE) %>%
+mutate(groupID = 1:n()) %>%
+ggplot(aes(x = percentage, y = Qcategory, group = groupID, fill = Acategory))+
+geom_col(position = position_dodge(0.9))+
+scale_fill_tableau("Classic 10", guide = FALSE)+
+scale_x_continuous(expand = expansion(mult = c(0, 0.2)))+
+scale_y_discrete(labels = function(category) str_wrap(category, width = 25))+
+geom_text(aes(label = text),
+    hjust = -0.1,
+    color = 'black',
+    position = position_dodge(0.9)) +
+coord_cartesian(clip = 'off') +
+theme_doc()+
+labs(x = element_blank(), y = element_blank())+
+theme(axis.text.x = element_blank(), axis.line.x=element_blank(), axis.text.y=element_text(size=11))
+```
